@@ -14,23 +14,41 @@ export default function App() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodoContent, setNewTodoContent] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [isClient, setIsClient] = useState(false);
 
-  // Load todos from localStorage on component mount
+  // Check if we're on the client side
   useEffect(() => {
-    const savedTodos = localStorage.getItem("todos");
-    if (savedTodos) {
-      const parsedTodos = JSON.parse(savedTodos).map((todo: any) => ({
-        ...todo,
-        createdAt: new Date(todo.createdAt)
-      }));
-      setTodos(parsedTodos);
-    }
+    setIsClient(true);
   }, []);
 
-  // Save todos to localStorage whenever todos change
+  // Load todos from localStorage on component mount (client-side only)
   useEffect(() => {
-    localStorage.setItem("todos", JSON.stringify(todos));
-  }, [todos]);
+    if (!isClient) return;
+    
+    const savedTodos = localStorage.getItem("todos");
+    if (savedTodos) {
+      try {
+        const parsedTodos = JSON.parse(savedTodos).map((todo: any) => ({
+          ...todo,
+          createdAt: new Date(todo.createdAt)
+        }));
+        setTodos(parsedTodos);
+      } catch (error) {
+        console.error("Error parsing todos from localStorage:", error);
+      }
+    }
+  }, [isClient]);
+
+  // Save todos to localStorage whenever todos change (client-side only)
+  useEffect(() => {
+    if (!isClient) return;
+    
+    try {
+      localStorage.setItem("todos", JSON.stringify(todos));
+    } catch (error) {
+      console.error("Error saving todos to localStorage:", error);
+    }
+  }, [todos, isClient]);
 
   const addTodo = () => {
     if (newTodoContent.trim()) {
@@ -67,6 +85,18 @@ export default function App() {
 
   const activeTodosCount = todos.filter(todo => !todo.completed).length;
   const completedTodosCount = todos.filter(todo => todo.completed).length;
+
+  // Don't render anything until we're on the client side
+  if (!isClient) {
+    return (
+      <main style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
+        <h1 style={{ textAlign: "center", marginBottom: "30px" }}>My Todo App</h1>
+        <div style={{ textAlign: "center", color: "#666" }}>
+          Loading...
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
