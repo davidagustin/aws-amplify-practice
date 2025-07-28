@@ -2,6 +2,12 @@
 
 A modern streaming platform built with Next.js 15 and React, featuring a Netflix/Disney+ inspired interface with movie browsing, carousels, and responsive design. This is a frontend application that showcases popular movies with real poster images and robust fallback systems.
 
+## 🌐 Live Demo
+
+**Visit the live application:** [https://main.d1bolbr8do04cv.amplifyapp.com/](https://main.d1bolbr8do04cv.amplifyapp.com/)
+
+The app is deployed on AWS Amplify and features all the functionality described below.
+
 ## Features
 
 - 🎬 **Movie Carousels**: Horizontal scrolling carousels for different genres
@@ -164,8 +170,9 @@ app/
 
 ## Deployment
 
-This app can be deployed to any static hosting service:
+This app is currently deployed on **AWS Amplify** and can be deployed to any static hosting service:
 
+- **AWS Amplify**: ✅ Currently deployed - [Live Demo](https://main.d1bolbr8do04cv.amplifyapp.com/)
 - **Vercel**: Connect your GitHub repository for automatic deployments
 - **Netlify**: Drag and drop the build folder after building
 - **AWS S3 + CloudFront**: Upload the built files to S3
