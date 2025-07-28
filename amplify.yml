@@ -12,7 +12,7 @@ frontend:
         - pnpm run build
         - echo "Frontend build completed"
   artifacts:
-    baseDirectory: .next
+    baseDirectory: out
     files:
       - '**/*'
   cache:
