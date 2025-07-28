@@ -9,9 +9,12 @@ import "@aws-amplify/ui-react/styles.css";
 
 // Conditionally import amplify outputs
 let outputs: any = {};
+let client: any = null;
+
 try {
   outputs = require("@/amplify_outputs.json");
   Amplify.configure(outputs);
+  client = generateClient<Schema>();
 } catch (error) {
   console.warn("Amplify outputs not found. Backend may not be deployed yet.");
   // Provide a basic configuration for development
@@ -24,19 +27,45 @@ try {
       },
     },
   });
+  // Create a mock client for development
+  client = {
+    models: {
+      Todo: {
+        observeQuery: () => ({
+          subscribe: ({ next, error }: { next: (data: any) => void; error: (err: any) => void }) => {
+            // Mock data for development
+            next({ items: [] });
+            return { unsubscribe: () => {} };
+          }
+        }),
+        create: () => {
+          console.log("Mock create todo - backend not deployed");
+        }
+      }
+    }
+  };
 }
-
-const client = generateClient<Schema>();
 
 export default function App() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isBackendDeployed, setIsBackendDeployed] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Check if backend is deployed
+    try {
+      require("@/amplify_outputs.json");
+      setIsBackendDeployed(true);
+    } catch {
+      setIsBackendDeployed(false);
+    }
+  }, []);
 
   function listTodos() {
     try {
       client.models.Todo.observeQuery().subscribe({
-        next: (data) => setTodos([...data.items]),
-        error: (err) => setError("Failed to load todos: " + err.message),
+        next: (data: any) => setTodos([...data.items]),
+        error: (err: any) => setError("Failed to load todos: " + err.message),
       });
     } catch (err) {
       setError("Failed to connect to backend");
@@ -60,6 +89,18 @@ export default function App() {
   return (
     <main>
       <h1>My todos</h1>
+      {!isBackendDeployed && (
+        <div style={{ 
+          background: '#fff3cd', 
+          border: '1px solid #ffeaa7', 
+          padding: '10px', 
+          margin: '10px 0',
+          borderRadius: '4px',
+          color: '#856404'
+        }}>
+          ⚠️ Backend not deployed yet. This is a demo mode with mock data.
+        </div>
+      )}
       <button onClick={createTodo}>+ new</button>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       <ul>
