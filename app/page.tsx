@@ -1,119 +1,230 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
 import "./../app/app.css";
-import { Amplify } from "aws-amplify";
-import "@aws-amplify/ui-react/styles.css";
 
-// Conditionally import amplify outputs
-let outputs: any = {};
-let client: any = null;
-
-try {
-  outputs = require("@/amplify_outputs.json");
-  Amplify.configure(outputs);
-  client = generateClient<Schema>();
-} catch (error) {
-  console.warn("Amplify outputs not found. Backend may not be deployed yet.");
-  // Provide a basic configuration for development
-  Amplify.configure({
-    API: {
-      GraphQL: {
-        endpoint: process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql",
-        region: process.env.NEXT_PUBLIC_AWS_REGION || "us-east-1",
-        defaultAuthMode: "apiKey",
-      },
-    },
-  });
-  // Create a mock client for development
-  client = {
-    models: {
-      Todo: {
-        observeQuery: () => ({
-          subscribe: ({ next, error }: { next: (data: any) => void; error: (err: any) => void }) => {
-            // Mock data for development
-            next({ items: [] });
-            return { unsubscribe: () => {} };
-          }
-        }),
-        create: () => {
-          console.log("Mock create todo - backend not deployed");
-        }
-      }
-    }
-  };
+interface Todo {
+  id: string;
+  content: string;
+  completed: boolean;
+  createdAt: Date;
 }
 
 export default function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isBackendDeployed, setIsBackendDeployed] = useState<boolean>(false);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [newTodoContent, setNewTodoContent] = useState("");
+  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
 
+  // Load todos from localStorage on component mount
   useEffect(() => {
-    // Check if backend is deployed
-    try {
-      require("@/amplify_outputs.json");
-      setIsBackendDeployed(true);
-    } catch {
-      setIsBackendDeployed(false);
+    const savedTodos = localStorage.getItem("todos");
+    if (savedTodos) {
+      const parsedTodos = JSON.parse(savedTodos).map((todo: any) => ({
+        ...todo,
+        createdAt: new Date(todo.createdAt)
+      }));
+      setTodos(parsedTodos);
     }
   }, []);
 
-  function listTodos() {
-    try {
-      client.models.Todo.observeQuery().subscribe({
-        next: (data: any) => setTodos([...data.items]),
-        error: (err: any) => setError("Failed to load todos: " + err.message),
-      });
-    } catch (err) {
-      setError("Failed to connect to backend");
-    }
-  }
-
+  // Save todos to localStorage whenever todos change
   useEffect(() => {
-    listTodos();
-  }, []);
+    localStorage.setItem("todos", JSON.stringify(todos));
+  }, [todos]);
 
-  function createTodo() {
-    try {
-      client.models.Todo.create({
-        content: window.prompt("Todo content"),
-      });
-    } catch (err) {
-      setError("Failed to create todo");
+  const addTodo = () => {
+    if (newTodoContent.trim()) {
+      const newTodo: Todo = {
+        id: Date.now().toString(),
+        content: newTodoContent.trim(),
+        completed: false,
+        createdAt: new Date()
+      };
+      setTodos([...todos, newTodo]);
+      setNewTodoContent("");
     }
-  }
+  };
+
+  const toggleTodo = (id: string) => {
+    setTodos(todos.map(todo => 
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    ));
+  };
+
+  const deleteTodo = (id: string) => {
+    setTodos(todos.filter(todo => todo.id !== id));
+  };
+
+  const clearCompleted = () => {
+    setTodos(todos.filter(todo => !todo.completed));
+  };
+
+  const filteredTodos = todos.filter(todo => {
+    if (filter === "active") return !todo.completed;
+    if (filter === "completed") return todo.completed;
+    return true;
+  });
+
+  const activeTodosCount = todos.filter(todo => !todo.completed).length;
+  const completedTodosCount = todos.filter(todo => todo.completed).length;
 
   return (
-    <main>
-      <h1>My todos</h1>
-      {!isBackendDeployed && (
-        <div style={{ 
-          background: '#fff3cd', 
-          border: '1px solid #ffeaa7', 
-          padding: '10px', 
-          margin: '10px 0',
-          borderRadius: '4px',
-          color: '#856404'
-        }}>
-          ⚠️ Backend not deployed yet. This is a demo mode with mock data.
+    <main style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
+      <h1 style={{ textAlign: "center", marginBottom: "30px" }}>My Todo App</h1>
+      
+      {/* Add Todo Form */}
+      <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+        <input
+          type="text"
+          value={newTodoContent}
+          onChange={(e) => setNewTodoContent(e.target.value)}
+          onKeyPress={(e) => e.key === "Enter" && addTodo()}
+          placeholder="What needs to be done?"
+          style={{
+            flex: 1,
+            padding: "12px",
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            fontSize: "16px"
+          }}
+        />
+        <button
+          onClick={addTodo}
+          style={{
+            padding: "12px 20px",
+            backgroundColor: "#007bff",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "16px"
+          }}
+        >
+          Add
+        </button>
+      </div>
+
+      {/* Filter Buttons */}
+      <div style={{ marginBottom: "20px", display: "flex", gap: "10px", justifyContent: "center" }}>
+        <button
+          onClick={() => setFilter("all")}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: filter === "all" ? "#007bff" : "#f8f9fa",
+            color: filter === "all" ? "white" : "#333",
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            cursor: "pointer"
+          }}
+        >
+          All ({todos.length})
+        </button>
+        <button
+          onClick={() => setFilter("active")}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: filter === "active" ? "#007bff" : "#f8f9fa",
+            color: filter === "active" ? "white" : "#333",
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            cursor: "pointer"
+          }}
+        >
+          Active ({activeTodosCount})
+        </button>
+        <button
+          onClick={() => setFilter("completed")}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: filter === "completed" ? "#007bff" : "#f8f9fa",
+            color: filter === "completed" ? "white" : "#333",
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            cursor: "pointer"
+          }}
+        >
+          Completed ({completedTodosCount})
+        </button>
+      </div>
+
+      {/* Todo List */}
+      <div style={{ marginBottom: "20px" }}>
+        {filteredTodos.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#666", fontStyle: "italic" }}>
+            {filter === "all" ? "No todos yet. Add one above!" : 
+             filter === "active" ? "No active todos." : "No completed todos."}
+          </p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {filteredTodos.map((todo) => (
+              <li
+                key={todo.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "12px",
+                  borderBottom: "1px solid #eee",
+                  backgroundColor: "white"
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={todo.completed}
+                  onChange={() => toggleTodo(todo.id)}
+                  style={{ marginRight: "12px" }}
+                />
+                <span
+                  style={{
+                    flex: 1,
+                    textDecoration: todo.completed ? "line-through" : "none",
+                    color: todo.completed ? "#666" : "#333"
+                  }}
+                >
+                  {todo.content}
+                </span>
+                <button
+                  onClick={() => deleteTodo(todo.id)}
+                  style={{
+                    padding: "4px 8px",
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "12px"
+                  }}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Clear Completed Button */}
+      {completedTodosCount > 0 && (
+        <div style={{ textAlign: "center" }}>
+          <button
+            onClick={clearCompleted}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: "#6c757d",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer"
+            }}
+          >
+            Clear Completed ({completedTodosCount})
+          </button>
         </div>
       )}
-      <button onClick={createTodo}>+ new</button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
-        ))}
-      </ul>
-      <div>
-        🥳 App successfully hosted. Try creating a new todo.
+
+      <div style={{ marginTop: "40px", textAlign: "center", color: "#666" }}>
+        🎉 Pure frontend todo app with local storage!
         <br />
-        <a href="https://docs.amplify.aws/nextjs/start/quickstart/nextjs-app-router-client-components/">
-          Review next steps of this tutorial.
-        </a>
+        <small>Your todos are saved locally in your browser.</small>
       </div>
     </main>
   );

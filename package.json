@@ -1,5 +1,5 @@
 {
-  "name": "aws-amplify-gen2",
+  "name": "frontend-todo-app",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.12.4",
@@ -13,23 +13,14 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@aws-amplify/ui-react": "^6.11.2",
-    "aws-amplify": "^6.15.4",
     "next": "15.4.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@aws-amplify/backend": "^1.16.1",
-    "@aws-amplify/backend-cli": "^1.8.0",
     "@types/node": "^24.1.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "aws-cdk": "^2.1022.0",
-    "aws-cdk-lib": "^2.207.0",
-    "constructs": "^10.4.2",
-    "esbuild": "^0.25.8",
-    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
 }
